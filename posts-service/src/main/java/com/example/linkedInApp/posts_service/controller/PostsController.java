@@ -1,10 +1,12 @@
 package com.example.linkedInApp.posts_service.controller;
 
+import com.example.linkedInApp.posts_service.auth.UserContextHolder;
 import com.example.linkedInApp.posts_service.dto.PostDto;
 import com.example.linkedInApp.posts_service.entity.Post;
 import com.example.linkedInApp.posts_service.service.PostsService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/posts")
 @RequiredArgsConstructor
+@Slf4j
 public class PostsController {
 
     private final PostsService postsService;
@@ -26,6 +29,8 @@ public class PostsController {
 
     @GetMapping("/{postId}")
     public ResponseEntity<PostDto> getPostById(@PathVariable Long postId){
+        Long userId=UserContextHolder.getCurrentUserId();
+        log.info("Authenticated userId from context: {}", userId);
         PostDto post= postsService.getPostById(postId);
         return post!=null ? ResponseEntity.ok(post) : ResponseEntity.noContent().build();
     }

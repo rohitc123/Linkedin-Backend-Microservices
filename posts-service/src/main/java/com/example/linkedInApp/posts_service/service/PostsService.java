@@ -1,5 +1,8 @@
 package com.example.linkedInApp.posts_service.service;
 
+import com.example.linkedInApp.posts_service.auth.UserContextHolder;
+import com.example.linkedInApp.posts_service.client.ConnectionsClient;
+import com.example.linkedInApp.posts_service.dto.PersonDto;
 import com.example.linkedInApp.posts_service.dto.PostDto;
 import com.example.linkedInApp.posts_service.entity.Post;
 import com.example.linkedInApp.posts_service.exception.BadRequestException;
@@ -20,6 +23,7 @@ public class PostsService {
 
     private final ModelMapper modelMapper;
     private final PostsRepository postsRepository;
+    private final ConnectionsClient connectionsClient;
 
     public PostDto createPost(PostDto postDto, long userId) {
         log.info("post is creating by user: {} ",userId);
@@ -32,6 +36,9 @@ public class PostsService {
 
 
     public PostDto getPostById(Long postId) {
+        log.info("Retrieving post by id {}",postId);
+        Long userId=UserContextHolder.getCurrentUserId();
+        List<PersonDto> firstConnection= connectionsClient.getFirstConnections(userId);
         Post post = postsRepository.findById(postId)
                 .orElseThrow(()->new ResourceNotFoundException("Post not found with id: "+postId));
         return modelMapper.map(post, PostDto.class);
