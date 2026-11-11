@@ -11,6 +11,7 @@ import org.springframework.data.neo4j.core.schema.Node;
 @Setter
 public class Person {
     @Id
+    @GeneratedValue
     private Long id;
 
     private Long userId;

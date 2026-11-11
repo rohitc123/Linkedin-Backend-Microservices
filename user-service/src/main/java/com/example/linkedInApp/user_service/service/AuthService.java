@@ -5,6 +5,7 @@ import com.example.linkedInApp.user_service.dto.SignUpRequestDto;
 import com.example.linkedInApp.user_service.dto.UserDto;
 import com.example.linkedInApp.user_service.entity.User;
 import com.example.linkedInApp.user_service.exception.BadRequestException;
+import com.example.linkedInApp.user_service.exception.EmailAlreadyExistsException;
 import com.example.linkedInApp.user_service.exception.ResourceNotFoundException;
 import com.example.linkedInApp.user_service.repository.UserRepository;
 import com.example.linkedInApp.user_service.utils.PasswordUtils;
@@ -26,6 +27,10 @@ public class AuthService {
         User user=modelMapper.map(signUpRequestDto,User.class);
 
         user.setPassword(PasswordUtils.hashPassword(signUpRequestDto.getPassword()));
+
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new EmailAlreadyExistsException("Email is already registered");
+        }
 
         User savedUser=userRepository.save(user);
         return modelMapper.map(savedUser, UserDto.class);

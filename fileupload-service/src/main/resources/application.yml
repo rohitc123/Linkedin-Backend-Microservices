@@ -1,0 +1,17 @@
+spring.application.name: fileupload-service
+
+server.port: 9060
+eureka.client.service-url.defaultZone: http://discovery-server:8761/eureka/
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
+
+
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB

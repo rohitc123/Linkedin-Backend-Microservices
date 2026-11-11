@@ -2,11 +2,13 @@ package com.example.linkedInApp.posts_service.service;
 
 import com.example.linkedInApp.posts_service.entity.Post;
 import com.example.linkedInApp.posts_service.entity.PostLike;
+import com.example.linkedInApp.posts_service.event.PostLikedEvent;
 import com.example.linkedInApp.posts_service.exception.ResourceNotFoundException;
 import com.example.linkedInApp.posts_service.repository.PostLikeRepository;
 import com.example.linkedInApp.posts_service.repository.PostsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,14 +18,13 @@ public class PostLikeService {
 
     private final PostLikeRepository postLikeRepository;
     private final PostsRepository postsRepository;
+    private final KafkaTemplate<String, PostLikedEvent> kafkaTemplate;
 
     public void likePost(Long postId, long userId) {
         log.info("Attempting to like post with id: {} by user: {}", postId, userId);
-
-        boolean existPost= postsRepository.existsById(postId);
-        if(!existPost){
-            throw new ResourceNotFoundException("Cannot like post. Post not found with id: " + postId);
-        }
+        Post post = postsRepository.findById(postId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Cannot like post. Post not found with id: " + postId));
 
         boolean alreadyLiked=postLikeRepository.existsByPostIdAndUserId(postId,userId);
 
@@ -35,6 +36,14 @@ public class PostLikeService {
         postLike.setPostId(postId);
         postLike.setUserId(userId);
         PostLike savedPost=postLikeRepository.save(postLike);
+
+        PostLikedEvent event = PostLikedEvent.builder()
+                .postId(postId)
+                .creatorId(post.getUserId())
+                .likedByUserId(userId)
+                .build();
+
+        kafkaTemplate.send("post-liked-topic", event);
 
         log.info("Post with id: {} successfully liked by user: {}", postId, userId);
     }

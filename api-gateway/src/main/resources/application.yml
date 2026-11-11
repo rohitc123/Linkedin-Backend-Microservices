@@ -1,6 +1,6 @@
 
 jwt:
-  secretKey: dfcgvhbfghjklertyuiocecieccjjeivvbvvownijbvivdipifnif75kkk3fv64v6vws
+  secretKey:  ${JWT_SECRET_KEY}
 
 spring:
   application:
@@ -9,10 +9,23 @@ spring:
 server:
   port: 9000
 
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: User Service
+        url: /user-service/v3/api-docs
+      - name: Posts Service
+        url: /posts-service/v3/api-docs
+      - name: Connection Service
+        url: /connection-service/v3/api-docs
+
+
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://discovery-server:8761/eureka/
 
 management:
   endpoints:

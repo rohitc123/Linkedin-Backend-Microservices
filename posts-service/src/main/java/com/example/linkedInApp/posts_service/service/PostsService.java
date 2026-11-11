@@ -1,17 +1,22 @@
 package com.example.linkedInApp.posts_service.service;
 
+import com.example.linkedInApp.posts_service.advices.ApiResponse;
 import com.example.linkedInApp.posts_service.auth.UserContextHolder;
 import com.example.linkedInApp.posts_service.client.ConnectionsClient;
-import com.example.linkedInApp.posts_service.dto.PersonDto;
-import com.example.linkedInApp.posts_service.dto.PostDto;
+import com.example.linkedInApp.posts_service.client.FileUploadClient;
+import com.example.linkedInApp.posts_service.dto.*;
 import com.example.linkedInApp.posts_service.entity.Post;
+import com.example.linkedInApp.posts_service.entity.PostMedia;
+import com.example.linkedInApp.posts_service.event.PostCreatedEvent;
 import com.example.linkedInApp.posts_service.exception.BadRequestException;
 import com.example.linkedInApp.posts_service.exception.ResourceNotFoundException;
 import com.example.linkedInApp.posts_service.repository.PostsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,32 +29,72 @@ public class PostsService {
     private final ModelMapper modelMapper;
     private final PostsRepository postsRepository;
     private final ConnectionsClient connectionsClient;
+    private final FileUploadClient fileUploadClient;
 
-    public PostDto createPost(PostDto postDto, long userId) {
+    private final KafkaTemplate<Long, PostCreatedEvent> kafkaTemplate;
+
+    public PostResponseDto  createPost( PostCreateRequestDto postCreateRequest, MultipartFile file, long userId) {
         log.info("post is creating by user: {} ",userId);
-        Post post=modelMapper.map(postDto, Post.class);
+        Post post=modelMapper.map(postCreateRequest, Post.class);
         post.setUserId(userId);
+
+        if (file != null && !file.isEmpty()) {
+
+            ApiResponse<FileUploadResponse> uploadResponse =
+                    fileUploadClient.uploadFile(file);
+
+
+            PostMedia postMedia = getPostMedia(uploadResponse, post);
+            post.getMedia().add(postMedia);
+
+        }
+
         Post savedPost=postsRepository.save(post);
-        log.info("post is created by user: {} ",userId);
-        return modelMapper.map(savedPost,PostDto.class);
+        PostCreatedEvent postCreatedEvent= PostCreatedEvent.builder()
+                .creatorId(userId)
+                .content(savedPost.getContent())
+                .postId(savedPost.getId())
+                .build();
+
+        kafkaTemplate.send("post-created-topic",postCreatedEvent);
+
+
+        return modelMapper.map(savedPost, PostResponseDto.class);
+
+    }
+
+    private static PostMedia getPostMedia(ApiResponse<FileUploadResponse> uploadResponse, Post post) {
+        FileUploadResponse uploadResponses = uploadResponse.getData();
+
+        // 3. Create PostMedia entity
+//            PostMedia postMedia = modelMapper.map(
+//                    uploadResponse, PostMedia.class
+//            );
+
+        PostMedia postMedia = new PostMedia();
+
+        postMedia.setSecureUrl(uploadResponses.getSecureUrl());
+        postMedia.setPublicId(uploadResponses.getPublicId());
+        postMedia.setResourceType(uploadResponses.getResourceType());
+
+        postMedia.setPost(post);
+        return postMedia;
     }
 
 
-    public PostDto getPostById(Long postId) {
+    public PostResponseDto  getPostById(Long postId) {
         log.info("Retrieving post by id {}",postId);
-        Long userId=UserContextHolder.getCurrentUserId();
-        List<PersonDto> firstConnection= connectionsClient.getFirstConnections(userId);
         Post post = postsRepository.findById(postId)
                 .orElseThrow(()->new ResourceNotFoundException("Post not found with id: "+postId));
-        return modelMapper.map(post, PostDto.class);
+        return modelMapper.map(post, PostResponseDto .class);
     }
 
-    public List<PostDto> getAllPostsByUser(Long userId) {
+    public List<PostResponseDto > getAllPostsByUser(Long userId) {
         log.info("Fetching all posts written by user: {}", userId);
         List<Post> posts=postsRepository.findByUserId(userId);
         return posts
                     .stream()
-                    .map((element) -> modelMapper.map(element, PostDto.class))
+                    .map((element) -> modelMapper.map(element, PostResponseDto .class))
                     .collect(Collectors.toList());
     }
 

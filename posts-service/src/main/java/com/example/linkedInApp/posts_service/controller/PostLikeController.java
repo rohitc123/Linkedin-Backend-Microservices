@@ -1,5 +1,6 @@
 package com.example.linkedInApp.posts_service.controller;
 
+import com.example.linkedInApp.posts_service.auth.UserContextHolder;
 import com.example.linkedInApp.posts_service.service.PostLikeService;
 import com.example.linkedInApp.posts_service.service.PostsService;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,8 @@ public class PostLikeController {
 
     @PostMapping("/{postId}")
     public ResponseEntity<Void> likePosts(@PathVariable Long postId){
-        postLikeService.likePost(postId,1L);
+        Long userId = UserContextHolder.getCurrentUserId();
+        postLikeService.likePost(postId, userId);
         return ResponseEntity.noContent().build();
     }
 
